@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ads Viewer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+  .wrap {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px;
+    gap: 12px;
+  }
+  .slot {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid #1a1a1a;
+    border-radius: 6px;
+    padding: 8px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .slot.iframe-slot { padding: 0; height: 320px; }
+  .iframe-slot iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .label { font-size: 10px; color: #444; text-align: center; padding: 2px 0; letter-spacing: 1px; }
+  #status {
+    position: fixed; right: 6px; bottom: 6px;
+    font-size: 10px; color: #333; opacity: .6;
+  }
+</style>
+<script src="spoof.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="label">Ad Slot 1</div>
+    <div class="slot" id="slot1">
+      <div id="container-3c0fc32352db8d5fb11c0bb08f0674d2"></div>
+    </div>
+
+    <div class="label">Ad Slot 2</div>
+    <div class="slot iframe-slot">
+      <iframe id="popframe" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+    </div>
+
+    <div class="label">Ad Slot 3</div>
+    <div class="slot" id="slot3">
+      <div id="social-bar-anchor"></div>
+    </div>
+
+    <div class="label">Ad Slot 4</div>
+    <div class="slot" id="slot4">
+      <div id="container-slot4"></div>
+    </div>
+
+    <div class="label">Ad Slot 5</div>
+    <div class="slot" id="slot5">
+      <div id="container-slot5"></div>
+    </div>
+
+    <div class="label">Ad Slot 6</div>
+    <div class="slot" id="slot6">
+      <div id="container-slot6"></div>
+    </div>
+  </div>
+
+  <div id="status">v</div>
+
+<script>
+(function(){
+  function rand(len){
+    var s = "abcdefghijklmnopqrstuvwxyz0123456789";
+    var o = "";
+    for (var i = 0; i < len; i++) o += s.charAt(Math.floor(Math.random() * s.length));
+    return o;
+  }
+
+  function getParam(name){
+    var m = location.search.match(new RegExp("[?&]" + name + "=([^&]*)"));
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  // -------- AUTO-CLICK: Use Android bridge for persistent count --------
+  var adLoadCount = 0;
+  try {
+    if (typeof AndroidBridge !== 'undefined') {
+      adLoadCount = AndroidBridge.getAdLoadCount();
+      console.log('[AUTO-CLICK] Got count from Android bridge:', adLoadCount);
+    } else {
+      console.log('[AUTO-CLICK] ⚠️ AndroidBridge not available, using localStorage');
+      adLoadCount = parseInt(localStorage.getItem("adLoadCount") || "0", 10);
+    }
+  } catch(e) {
+    console.log('[AUTO-CLICK] Error reading count:', e.message);
+    adLoadCount = parseInt(localStorage.getItem("adLoadCount") || "0", 10);
+  }
+  
+  adLoadCount++;
+  console.log('[AUTO-CLICK] New count:', adLoadCount, '(will click on 3rd, 6th, 9th...)');
+  
+  // Save to both bridge and localStorage
+  try {
+    if (typeof AndroidBridge !== 'undefined') {
+      AndroidBridge.setAdLoadCount(adLoadCount);
+    }
+    localStorage.setItem("adLoadCount", String(adLoadCount));
+  } catch(e) {
+    console.log('[AUTO-CLICK] Error saving count:', e.message);
+  }
+
+  // -------- Wipe other storage --------
+  try { sessionStorage.clear(); } catch(e){}
+  try {
+    if (window.indexedDB && indexedDB.databases) {
+      indexedDB.databases().then(function(dbs){
+        (dbs || []).forEach(function(db){ try { indexedDB.deleteDatabase(db.name); } catch(e){} });
+      }).catch(function(){});
+    }
+  } catch(e){}
+  try {
+    document.cookie.split(";").forEach(function(c){
+      var eq = c.indexOf("=");
+      var name = (eq > -1 ? c.substr(0, eq) : c).trim();
+      document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+    });
+  } catch(e){}
+
+  // -------- Seed fingerprint --------
+  var visitorId = getParam("vid") || rand(32);
+  var sessionId = rand(24);
+  try {
+    localStorage.setItem("visitor_id", visitorId);
+    localStorage.setItem("session_id", sessionId);
+    localStorage.setItem("first_seen", String(Date.now()));
+    localStorage.setItem("device_id", rand(40));
+    localStorage.setItem("ad_seed", rand(16));
+    localStorage.setItem("adLoadCount", String(adLoadCount));
+    sessionStorage.setItem("nonce", rand(20));
+    document.cookie = "vid=" + visitorId + "; path=/";
+    document.cookie = "sid=" + sessionId + "; path=/";
+    document.cookie = "ab=" + rand(8) + "; path=/";
+  } catch(e){}
+
+  // -------- Load ads --------
+  var bust = Date.now() + "_" + rand(8);
+
+  (function(){
+    var s = document.createElement("script");
+    s.async = true;
+    s.setAttribute("data-cfasync", "false");
+    s.src = "https://pl29338345.profitablecpmratenetwork.com/3c0fc32352db8d5fb11c0bb08f0674d2/invoke.js?_=" + bust;
+    document.body.appendChild(s);
+  })();
+
+  (function(){
+    var f = document.getElementById("popframe");
+    if (f) {
+      f.src = "https://www.profitablecpmratenetwork.com/fyxpd8hsm?key=802d0ba00f25b99effa0011e0516e56f&_=" + bust;
+    }
+  })();
+
+  (function(){
+    var s = document.createElement("script");
+    s.src = "https://pl29338347.profitablecpmratenetwork.com/cb/37/88/cb3788986e581f556ae9bab0b8ef3472.js?_=" + bust;
+    document.body.appendChild(s);
+  })();
+
+  (function(){
+    var f = document.createElement("iframe");
+    f.id = "slot4-frame";
+    f.referrerPolicy = "no-referrer";
+    f.sandbox = "allow-scripts allow-same-origin allow-popups allow-forms";
+    f.src = "https://www.profitablecpmratenetwork.com/nc0m71rs73?key=6024037ddffc8b6907b04ca94cb08c99&_=" + bust;
+    var container = document.getElementById("container-slot4");
+    if (container) {
+      container.style.width = "100%";
+      container.style.height = "100%";
+      container.style.border = "0";
+      container.appendChild(f);
+    }
+  })();
+
+  // Slot 5 - URL added
+  (function(){
+    var f = document.createElement("iframe");
+    f.id = "slot5-frame";
+    f.referrerPolicy = "no-referrer";
+    f.sandbox = "allow-scripts allow-same-origin allow-popups allow-forms";
+    f.src = "https://www.profitablecpmratenetwork.com/tfe2e193kt?key=d21d5ca1b004f33a5f44fff8a06076a3&_=" + bust;
+    var container = document.getElementById("container-slot5");
+    if (container) {
+      container.style.width = "100%";
+      container.style.height = "100%";
+      container.style.border = "0";
+      container.appendChild(f);
+    }
+  })();
+
+  // Slot 6 - URL added
+  (function(){
+    var f = document.createElement("iframe");
+    f.id = "slot6-frame";
+    f.referrerPolicy = "no-referrer";
+    f.sandbox = "allow-scripts allow-same-origin allow-popups allow-forms";
+    f.src = "https://www.profitablecpmratenetwork.com/fqkkk87yjv?key=a5a1190e2a8599bc71404a05c5f8fb09&_=" + bust;
+    var container = document.getElementById("container-slot6");
+    if (container) {
+      container.style.width = "100%";
+      container.style.height = "100%";
+      container.style.border = "0";
+      container.appendChild(f);
+    }
+  })();
+
+  document.getElementById("status").textContent = "v " + visitorId.substring(0,6) + " #" + adLoadCount;
+
+  // -------- AUTO-CLICK LOGIC --------
+  if (adLoadCount % 3 === 0) {
+    console.log('[AUTO-CLICK] ⚡ This is the 3rd load (#' + adLoadCount + ')! Will click after 3 seconds...');
+    
+    setTimeout(function(){
+      console.log('[AUTO-CLICK] Searching for clickable ad elements...');
+      var clicked = false;
+      var originalUrl = window.location.href;
+      
+      var selectors = [
+        '#container-5ca4eb8a5ea9c726eeb96d9fac37d380 a',
+        '#container-5ca4eb8a5ea9c726eeb96d9fac37d380 iframe',
+        '#popframe',
+        '#social-bar-anchor a',
+        '#social-bar-anchor iframe',
+        '.slot a',
+        'iframe[src*="profitablecpmratenetwork"]'
+      ];
+      
+      for (var i = 0; i < selectors.length && !clicked; i++) {
+        try {
+          var els = document.querySelectorAll(selectors[i]);
+          console.log('[AUTO-CLICK] Selector "' + selectors[i] + '" found ' + els.length + ' elements');
+          
+          if (els.length > 0) {
+            var target = els[Math.floor(Math.random() * els.length)];
+            console.log('[AUTO-CLICK] Attempting click on:', target.tagName, target.id || target.className);
+            
+            if (target.tagName === 'IFRAME' && target.src) {
+              console.log('[AUTO-CLICK] ✓ Navigating to iframe src:', target.src.substring(0, 50) + '...');
+              window.location.href = target.src;
+              clicked = true;
+              
+              setTimeout(function(){
+                console.log('[AUTO-CLICK] ← Returning back after 2 seconds');
+                window.history.back();
+              }, 2000);
+            } else if (target.tagName === 'A' && target.href) {
+              console.log('[AUTO-CLICK] ✓ Clicking link:', target.href.substring(0, 50) + '...');
+              target.click();
+              clicked = true;
+              
+              setTimeout(function(){
+                if (window.location.href !== originalUrl) {
+                  console.log('[AUTO-CLICK] ← Returning back after 2 seconds');
+                  window.history.back();
+                }
+              }, 2000);
+            }
+          }
+        } catch(e) {
+          console.log('[AUTO-CLICK] Error with selector "' + selectors[i] + '":', e.message);
+        }
+      }
+      
+      if (!clicked) {
+        console.log('[AUTO-CLICK] ⚠️ No clickable elements found');
+      }
+      
+    }, 3000);
+  } else {
+    console.log('[AUTO-CLICK] Not 3rd load (#' + adLoadCount + '), skipping click');
+  }
+  
+})();
+</script>
+</body>
+</html>
